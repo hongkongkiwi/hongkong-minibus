@@ -1,7 +1,7 @@
 {
   "name": "hongkong-minibus",
   "version": "1.0.0",
-  "description": "Node module to get info for Hong Kong Minibuses.",
+  "description": "Node.js module to get info for Hong Kong Minibuses.",
   "main": "index.js",
   "scripts": {
     "test": "mocha"
