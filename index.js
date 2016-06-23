@@ -101,11 +101,110 @@ Minibus.prototype.getGreenRoutes = function(area) {
   });
 };
 
-Minibus.prototype.getGreenRouteInfo = function(route_code) {
+Minibus.prototype.getGreenRouteInfo = function(route_code, area) {
+  var uri;
+  switch (area) {
+    case Minibus.HONG_KONG_ISLAND:
+      uri = '/gh_' + route_code + '.html';
+      break;
+    case Minibus.KOWLOON_SIDE:
+      uri = '/gk_' + route_code + '.html';
+      break;
+    case Minibus.NEW_TERRITORIES:
+      uri = '/gn_' + route_code + '.html';
+      break;
+  }
 
+  var options = {
+      method: 'GET',
+      baseUrl: 'http://www.16seats.net/eng/gmb',
+      uri: uri,
+      headers: {
+        'User-Agent': this.options.userAgent
+      },
+    };
+
+  return rp(options)
+    .then(function(html) {
+      return cheerio.load(html, {
+        normalizeWhitespace: true,
+        xmlMode: true
+      });
+    }).then(function($) {
+      var routeInfo = {
+        service_frequency: {},
+        service_hours: {}
+      };
+
+      $('table tr').each(function(i) {
+        if (i === 4) {
+          routeInfo.number = $(this).find('td table tr td table tr td').eq(1).text().trim();
+          routeInfo.en_name = $(this).find('td table tr td table tr td').eq(2).text().trim();
+        } else if (i === 11) {
+          routeInfo.direction = $(this).find('td table tr').eq(1).text().trim();
+          routeInfo.summary = $(this).find('td table tr').eq(2).text().trim();
+          routeInfo.service_hours.monday_friday = $(this).find('td table tr').eq(4).children('td').eq(1).text().split(' - ');
+          routeInfo.service_hours.saturday = $(this).find('td table tr').eq(5).children('td').eq(1).text().split(' - ');
+          routeInfo.service_hours.sunday_holidays = $(this).find('td table tr').eq(6).children('td').eq(1).text().split(' - ');
+          routeInfo.service_frequency.monday_friday = $(this).find('td table tr').eq(4).children('td').eq(3).text().split(' - ');
+          routeInfo.service_frequency.saturday = $(this).find('td table tr').eq(5).children('td').eq(3).text().split(' - ');
+          routeInfo.service_frequency.sunday_holidays = $(this).find('td table tr').eq(6).children('td').eq(3).text().split(' - ');
+
+          var routeTable = $(this).find('td table tr').eq(8).find('td table tr');
+          var places = [];
+          var j = 0;
+
+          routeTable.each(function(i) {
+            if (i < 1) {
+              return;
+            }
+            var roadName;
+            var landMark;
+
+            console.log($(this).find('td').eq(0).find('div').length);
+            if ($(this).find('td').eq(0).find('div').length === 1) {
+              roadName = $(this).find('td').eq(0).find('div').contents().filter(function() {
+                  return this.type === 'text';
+              }).text().trim();
+              landMark = $(this).find('td').eq(0).find('div span').text().replace(']','').replace('[','').trim();
+            } else {
+              roadName = $(this).find('td').eq(0).text().replace('&nbsp;','').replace('nbsp;','').trim();
+              if (roadName === '') {
+                roadName = places[j-1].road_name;
+              }
+              landMark = $(this).find('td').eq(2).text().replace('&nbsp;','').replace('nbsp;','').trim();
+            }
+
+            places.push({road_name: roadName, land_mark: landMark});
+            j++;
+            //console.log($(this).find('td').eq(2).html());
+          });
+          console.log(places);
+
+        }
+
+        //console.log($(this).html());
+        // switch (i) {
+        //   case 5:
+        //     console.log($(this).html());
+        //     break;
+        //   case 6:
+        //
+        //     break;
+        // }
+      });
+
+      //console.log(routeNumber, routeName); //.each(function(i) {
+      //   switch (i) {
+      //     case 4:
+      //       console.log($(this).html());
+      //       break;
+      //   }
+      // });
+
+      return routeInfo;
+    });
 };
-
-//http://www.16seats.net/eng/gmb/gh_4b.html
 
 module.exports = Minibus;
 
@@ -114,6 +213,6 @@ var minibus = new Minibus();
 //   console.log(routes);
 // });
 
-minibus.getGreenRouteInfo().then(function(info) {
+minibus.getGreenRouteInfo('1', Minibus.HONG_KONG_ISLAND).then(function(info) {
   console.log(info);
 });
